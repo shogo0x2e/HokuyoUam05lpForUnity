@@ -27,6 +27,11 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
 
         [Header("Behaviour")]
         public bool AutoReconnect = true;
+        [Tooltip("コンポーネント有効化時に自動で StartSensorAsync を呼び出す")]
+        public bool AutoStart = true;
+        public UamStreamMode AutoStartMode = UamStreamMode.Standard;
+        [Tooltip("接続/切断などの簡易ログを Unity Console に出す")]
+        public bool VerboseLogging = true;
 
         public Action? OnConnected;
         public Action? OnDisconnected;
@@ -51,6 +56,21 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
             _unityContext = SynchronizationContext.Current;
         }
 
+        private void OnEnable()
+        {
+            if (!AutoStart)
+            {
+                return;
+            }
+
+            if (VerboseLogging)
+            {
+                Debug.Log($"[UamSensor] AutoStart (mode={AutoStartMode})", this);
+            }
+
+            _ = StartSensorAsync(AutoStartMode);
+        }
+
         private void Update()
         {
             while (_mainThreadActions.TryDequeue(out var action))
@@ -71,6 +91,11 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
 
         public Task StartSensorAsync(UamStreamMode mode)
         {
+            if (VerboseLogging)
+            {
+                Debug.Log($"[UamSensor] Start requested ({Ip}:{Port}, mode={mode})", this);
+            }
+
             lock (_clientGate)
             {
                 _currentMode = mode;
@@ -88,11 +113,21 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
 
                 client.OnConnected = () => EnqueueMainThread(() =>
                 {
+                    if (VerboseLogging)
+                    {
+                        Debug.Log("[UamSensor] Connected", this);
+                    }
+
                     OnConnected?.Invoke();
                 });
 
                 client.OnDisconnected = () => EnqueueMainThread(() =>
                 {
+                    if (VerboseLogging)
+                    {
+                        Debug.LogWarning("[UamSensor] Disconnected", this);
+                    }
+
                     OnDisconnected?.Invoke();
                     if (!AutoReconnect)
                     {
@@ -102,6 +137,11 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
 
                 client.OnError = ex => EnqueueMainThread(() =>
                 {
+                    if (VerboseLogging)
+                    {
+                        Debug.LogError($"[UamSensor] Error: {ex.Message}", this);
+                    }
+
                     OnError?.Invoke(ex);
                 });
 
@@ -110,6 +150,11 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
                 _client = client;
                 TrimPoolsForMode(mode);
                 client.Start();
+
+                if (VerboseLogging)
+                {
+                    Debug.Log("[UamSensor] Connection loop started", this);
+                }
             }
 
             return Task.CompletedTask;
