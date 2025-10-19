@@ -38,22 +38,16 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Internal
         private long _lastTxTicks;
 
         private Action<UamFrame>? _onFrame;
-        private Action<UamFrame>? _onReply;
         private Action<Exception>? _onError;
         private Action? _onConnected;
         private Action? _onDisconnected;
-        private Action<string>? _onCommandSent;
-        private Action<string>? _onRawFrame;
 
         private UamStreamMode _desiredMode = UamStreamMode.Standard;
 
         public event Action<UamFrame>? FrameReceived;
-        public event Action<UamFrame>? ReplyReceived;
         public event Action? Connected;
         public event Action? Disconnected;
         public event Action<Exception>? Error;
-        public event Action<string>? CommandSent;
-        public event Action<string>? RawFrameReceived;
 
         public bool IsRunning => _runLoopTask is { IsCompleted: false };
         public bool IsConnected => _stream is not null;
@@ -62,12 +56,6 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Internal
         {
             get => _onFrame;
             set => _onFrame = value;
-        }
-
-        public Action<UamFrame>? OnReply
-        {
-            get => _onReply;
-            set => _onReply = value;
         }
 
         public Action<Exception>? OnError
@@ -86,18 +74,6 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Internal
         {
             get => _onDisconnected;
             set => _onDisconnected = value;
-        }
-
-        public Action<string>? OnCommandSent
-        {
-            get => _onCommandSent;
-            set => _onCommandSent = value;
-        }
-
-        public Action<string>? OnRawFrame
-        {
-            get => _onRawFrame;
-            set => _onRawFrame = value;
         }
 
         public void Start()
@@ -372,8 +348,6 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Internal
                     continue;
                 }
 
-                InvokeReplyCallbacks(frame);
-
                 if (!string.Equals(frame.Status, "00", StringComparison.Ordinal))
                 {
                     continue;
@@ -428,9 +402,6 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Internal
                         continue;
                     }
 
-                    var asciiBody = Encoding.ASCII.GetString(bodyBuffer, 0, bodyLength);
-                    InvokeRawFrame(asciiBody);
-
                     if (!TryParseFrame(bodyBuffer.AsSpan(0, bodyLength), out var frame))
                     {
                         continue;
@@ -457,8 +428,6 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Internal
                     continue;
                 }
 
-                InvokeReplyCallbacks(frame);
-
                 if (string.Equals(frame.Header, "AR", StringComparison.Ordinal) && string.Equals(frame.Status, "00", StringComparison.Ordinal))
                 {
                     StampNow(ref _lastRxTicks);
@@ -482,36 +451,12 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Internal
             _onFrame?.Invoke(frame);
         }
 
-        private void InvokeReplyCallbacks(UamFrame frame)
-        {
-            var replyHandler = ReplyReceived;
-            replyHandler?.Invoke(frame);
-
-            _onReply?.Invoke(frame);
-        }
-
         private void InvokeError(Exception exception)
         {
             var handler = Error;
             handler?.Invoke(exception);
 
             _onError?.Invoke(exception);
-        }
-
-        private void InvokeCommandSent(string ascii)
-        {
-            var handler = CommandSent;
-            handler?.Invoke(ascii);
-
-            _onCommandSent?.Invoke(ascii);
-        }
-
-        private void InvokeRawFrame(string ascii)
-        {
-            var handler = RawFrameReceived;
-            handler?.Invoke(ascii);
-
-            _onRawFrame?.Invoke(ascii);
         }
 
         private void InvokeConnected()
@@ -586,9 +531,6 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Internal
                     UamCodec.ToAsciiU16(crc, buffer.AsSpan(1 + bodyLength - crcField, crcField));
 
                     buffer[1 + bodyLength] = ETX;
-
-                    string asciiBody = Encoding.ASCII.GetString(buffer, 1, bodyLength);
-                    InvokeCommandSent(asciiBody);
 
                     await stream.WriteAsync(buffer, 0, 1 + bodyLength + 1, cancellationToken).ConfigureAwait(false);
                 }

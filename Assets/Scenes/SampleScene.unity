@@ -483,42 +483,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1193061516
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1193061515}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b9340f679adec4fe1bbb79e06132d71a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Shogo0x2e.HokuyoUam05lpForUnity.UamRoiGizmo
-  OutlineColor: {r: 0, g: 0.75, b: 1, a: 0.9}
---- !u!114 &1193061517
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1193061515}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 302d4c53520e84afb859fd09332a20cb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Shogo0x2e.HokuyoUam05lpForUnity.UamHitDetector
-  Sensor: {fileID: 1193061518}
-  HitThresholdM: 0.45
-  MinRangeM: 0.1
-  MaxRangeM: 5
-  Mode: 0
-  MinConsecutiveFrames: 2
-  CooldownFrames: 2
-  SmoothingAlpha: 0
-  UseRoi: 0
-  RoiFrame: {fileID: 601239689}
-  RoiSize: {x: 1, y: 1}
 --- !u!114 &1193061518
 MonoBehaviour:
   m_ObjectHideFlags: 0

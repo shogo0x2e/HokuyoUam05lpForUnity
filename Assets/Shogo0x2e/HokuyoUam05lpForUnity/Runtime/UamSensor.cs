@@ -175,8 +175,6 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
                 client.OnConnected = null;
                 client.OnDisconnected = null;
                 client.OnError = null;
-                client.OnCommandSent = null;
-                client.OnRawFrame = null;
                 await client.DisposeAsync().ConfigureAwait(false);
             }
 

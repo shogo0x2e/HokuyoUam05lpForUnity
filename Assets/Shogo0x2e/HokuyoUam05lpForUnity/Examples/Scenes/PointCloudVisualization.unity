@@ -383,37 +383,6 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_RenderingLayers: 1
   m_ShadowRenderingLayers: 1
---- !u!1 &601239688
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 601239689}
-  m_Layer: 0
-  m_Name: GameObject
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &601239689
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 601239688}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0
@@ -473,8 +442,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1193061519}
   - component: {fileID: 1193061518}
-  - component: {fileID: 1193061517}
-  - component: {fileID: 1193061516}
   - component: {fileID: 1193061520}
   m_Layer: 0
   m_Name: UamSensor
@@ -483,42 +450,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1193061516
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1193061515}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b9340f679adec4fe1bbb79e06132d71a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Shogo0x2e.HokuyoUam05lpForUnity.UamRoiGizmo
-  OutlineColor: {r: 0, g: 0.75, b: 1, a: 0.9}
---- !u!114 &1193061517
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1193061515}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 302d4c53520e84afb859fd09332a20cb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Shogo0x2e.HokuyoUam05lpForUnity.UamHitDetector
-  Sensor: {fileID: 1193061518}
-  HitThresholdM: 0.45
-  MinRangeM: 0.1
-  MaxRangeM: 5
-  Mode: 0
-  MinConsecutiveFrames: 2
-  CooldownFrames: 2
-  SmoothingAlpha: 0
-  UseRoi: 0
-  RoiFrame: {fileID: 601239689}
-  RoiSize: {x: 1, y: 1}
 --- !u!114 &1193061518
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -565,12 +496,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Shogo0x2e.HokuyoUam05lpForUnity.UamPointCloudVisualizer
   Sensor: {fileID: 1193061518}
-  SensorOrigin: {fileID: 601239689}
+  SensorOrigin: {fileID: 1193061519}
   DrawRays: 1
   DrawPoints: 1
   RayColor: {r: 0, g: 0.7, b: 1, a: 0.25}
   PointColor: {r: 1, g: 0.45, b: 0, a: 0.9}
-  PointRadius: 0.03
+  PointRadius: 0.01
   MaxVisualizedDistance: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
@@ -580,4 +511,3 @@ SceneRoots:
   - {fileID: 410087041}
   - {fileID: 832575519}
   - {fileID: 1193061519}
-  - {fileID: 601239689}
