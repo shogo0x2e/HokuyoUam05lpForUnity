@@ -1,4 +1,7 @@
 using System;
+using Shogo0x2e.HokuyoUam05lpForUnity;
+
+#nullable enable
 
 namespace Shogo0x2e.HokuyoUam05lpForUnity.Internal
 {
@@ -19,9 +22,8 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Internal
         public byte Ossd4 { get; set; }
         public uint Timestamp { get; set; }
         public ushort EncoderSpeed { get; set; }
-        public ushort[] Distances { get; set; } = Array.Empty<ushort>();
-        public ushort[] Intensities { get; set; } = Array.Empty<ushort>();
+        public IPolarScan? Scan { get; set; }
 
-        public bool HasDistanceData => Distances.Length > 0;
+        public bool HasDistanceData => Scan is { BeamCount: > 0 };
     }
 }

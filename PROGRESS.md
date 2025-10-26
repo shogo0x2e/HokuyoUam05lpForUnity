@@ -58,6 +58,13 @@
   - テスト (単体): `dotnet build`、主要スクリプトの `#if UNITY_EDITOR` 依存がないか確認。  
   - テスト (Unity Editor): サンプルシーンを起動し、タッチ検出 UI/ログが動作するか、Play Mode テストでリグレッションがないかチェック。
 
+## フェーズ1進捗ログ（2025-10-26）
+- `ITransport`/`TcpTransport`、`LidarProtocol`、`IPolarScan`/`PolarScan` を追加して `UamClient`・`UamSensor` を段階的に分離。既存 API (`OnPositionDetected`) は維持しつつ、今後の `OnScan(IPolarScan)` 公開に備えた。
+- `dotnet build HokuyoUam05lpForUnity.sln` でエラーなしを確認。CLI でのビルド時間は約 1.4 秒。
+- Unity 6000.2.6f2 エディタで実機 UAM を接続し、フェーズ1構成で連続スキャン → `UamPointCloudVisualizer` の点群描画が継続することを手動検証。切断→自動再接続も期待通り動作。
+- 気づき: keep-alive が 5 秒間隔のため、ネットワーク遅延が大きい環境では `_frameTimeout` (3 秒) がトリガして AR02 を投げ直す挙動になる。将来は閾値を設定ファイル化するか、プロファイルごとに調整できるようにしたい。
+- ルール追加: 新規インタフェースを導入する際は XML ドキュメントコメントで役割・イベント・プロパティを詳述しておく（今回の `ITransport` / `IPolarScan` で実践）。
+
 ## 参考ダイアグラム
 
 ```mermaid

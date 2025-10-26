@@ -183,7 +183,8 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
 
         private void HandleFrame(UamFrame frame)
         {
-            if (!frame.HasDistanceData)
+            var scan = frame.Scan;
+            if (scan is null || scan.BeamCount == 0)
             {
                 return;
             }
@@ -191,7 +192,7 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
             var mode = _currentMode;
             var directions = UamAngleTable.GetDirections(mode);
             int expected = directions.Length;
-            var distances = frame.Distances;
+            var distances = scan.Distances.Span;
 
             if (expected == 0)
             {
