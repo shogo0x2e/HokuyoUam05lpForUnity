@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Shogo0x2e.HokuyoUam05lpForUnity
 {
-    internal static class UamAngleTable
+    public static class UamAngleTable
     {
         private static readonly Lazy<Vector2[]> StandardDirections = new(() => BuildDirections(1081, -135f, 0.25f));
         private static readonly Lazy<Vector2[]> HighResolutionDirections = new(() => BuildDirections(2161, -135f, 0.125f));

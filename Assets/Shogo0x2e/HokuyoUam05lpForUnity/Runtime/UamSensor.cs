@@ -9,13 +9,6 @@ using UnityEngine;
 
 namespace Shogo0x2e.HokuyoUam05lpForUnity
 {
-    public enum UamStreamMode
-    {
-        Standard,
-        WithIntensity,
-        HighResolution,
-    }
-
     [DisallowMultipleComponent]
     public sealed class UamSensor : MonoBehaviour
     {
@@ -32,16 +25,20 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
         public UamStreamMode AutoStartMode = UamStreamMode.Standard;
         [Tooltip("接続/切断などの簡易ログを Unity Console に出す")]
         public bool VerboseLogging = true;
+        [Tooltip("Unity メインスレッドにイベントをディスパッチする (推奨)。オフにするとバックグラウンドスレッドから直接呼び出されます。")]
+        public bool DispatchEventsOnUnityThread = true;
 
         public Action? OnConnected;
         public Action? OnDisconnected;
         public Action<Exception>? OnError;
         public Action<UamStatus>? OnStatusChanged;
+        public Action<IPolarScan>? OnScan;
         public Action<Vector2[]>? OnPositionDetected;
 
         private static readonly Vector2 InvalidPoint = new(float.NaN, float.NaN);
 
         private readonly object _clientGate = new();
+        private Func<UamClient> _clientFactory = static () => new UamClient();
         private readonly ConcurrentDictionary<int, ConcurrentQueue<Vector2[]>> _bufferPools = new();
         private readonly ConcurrentQueue<Action> _mainThreadActions = new();
 
@@ -107,11 +104,15 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
                     return Task.CompletedTask;
                 }
 
-                var client = new UamClient();
+                var client = _clientFactory();
+                if (client is null)
+                {
+                    throw new InvalidOperationException("UamClient factory returned null.");
+                }
                 client.SetStreamMode(mode);
                 client.ResetEndpoint(Ip, Port);
 
-                client.OnConnected = () => EnqueueMainThread(() =>
+                client.OnConnected = () => DispatchEvent(() =>
                 {
                     if (VerboseLogging)
                     {
@@ -121,7 +122,7 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
                     OnConnected?.Invoke();
                 });
 
-                client.OnDisconnected = () => EnqueueMainThread(() =>
+                client.OnDisconnected = () => DispatchEvent(() =>
                 {
                     if (VerboseLogging)
                     {
@@ -135,7 +136,7 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
                     }
                 });
 
-                client.OnError = ex => EnqueueMainThread(() =>
+                client.OnError = ex => DispatchEvent(() =>
                 {
                     if (VerboseLogging)
                     {
@@ -158,6 +159,24 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
             }
 
             return Task.CompletedTask;
+        }
+
+        internal void SetClientFactory(Func<UamClient> factory)
+        {
+            if (factory is null)
+            {
+                throw new ArgumentNullException(nameof(factory));
+            }
+
+            lock (_clientGate)
+            {
+                if (_client is not null)
+                {
+                    throw new InvalidOperationException("Cannot change client factory while the sensor is running.");
+                }
+
+                _clientFactory = factory;
+            }
         }
 
         public async Task StopSensorAsync()
@@ -189,32 +208,10 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
                 return;
             }
 
-            var mode = _currentMode;
-            var directions = UamAngleTable.GetDirections(mode);
+            var streamMode = scan.StreamMode;
+            var directions = UamAngleTable.GetDirections(streamMode);
             int expected = directions.Length;
             var distances = scan.Distances.Span;
-
-            if (expected == 0)
-            {
-                return;
-            }
-
-            var buffer = RentBuffer(expected);
-            Array.Fill(buffer, InvalidPoint);
-
-            int copyCount = Math.Min(distances.Length, expected);
-            for (int i = 0; i < copyCount; ++i)
-            {
-                ushort raw = distances[i];
-                if (UamCodec.IsErrorDistance(raw) || raw == 0)
-                {
-                    continue;
-                }
-
-                float meters = raw * MilliMetersToMeters;
-                var dir = directions[i];
-                buffer[i] = dir * meters;
-            }
 
             var status = new UamStatus(
                 frame.OperatingMode,
@@ -227,7 +224,7 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
                 frame.Ossd4,
                 frame.EncoderSpeed,
                 frame.Timestamp,
-                mode);
+                streamMode);
 
             bool statusChanged;
             if (!_hasStatus)
@@ -245,33 +242,75 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
                 }
             }
 
-            EnqueueMainThread(() =>
+            var cartesianHandler = OnPositionDetected;
+            Vector2[]? cartesianBuffer = null;
+            if (cartesianHandler is not null)
+            {
+                if (expected == 0)
+                {
+                    cartesianBuffer = Array.Empty<Vector2>();
+                }
+                else
+                {
+                    cartesianBuffer = RentBuffer(expected);
+                    Array.Fill(cartesianBuffer, InvalidPoint);
+
+                    int copyCount = Math.Min(distances.Length, expected);
+                    for (int i = 0; i < copyCount; ++i)
+                    {
+                        ushort raw = distances[i];
+                        if (UamCodec.IsErrorDistance(raw) || raw == 0)
+                        {
+                            continue;
+                        }
+
+                        float meters = raw * MilliMetersToMeters;
+                        var dir = directions[i];
+                        cartesianBuffer[i] = dir * meters;
+                    }
+                }
+            }
+
+            var scanHandler = OnScan;
+
+            DispatchEvent(() =>
             {
                 if (statusChanged)
                 {
                     OnStatusChanged?.Invoke(status);
                 }
 
-                try
+                scanHandler?.Invoke(scan);
+
+                if (cartesianBuffer is not null)
                 {
-                    OnPositionDetected?.Invoke(buffer);
-                }
-                finally
-                {
-                    ReturnBuffer(buffer);
+                    try
+                    {
+                        cartesianHandler?.Invoke(cartesianBuffer);
+                    }
+                    finally
+                    {
+                        ReturnBuffer(cartesianBuffer);
+                    }
                 }
             });
         }
 
-        private void EnqueueMainThread(Action action)
+        private void DispatchEvent(Action action)
         {
-            if (_unityContext is not null && SynchronizationContext.Current == _unityContext)
+            if (DispatchEventsOnUnityThread)
             {
-                action();
+                if (_unityContext is not null && SynchronizationContext.Current == _unityContext)
+                {
+                    action();
+                    return;
+                }
+
+                _mainThreadActions.Enqueue(action);
                 return;
             }
 
-            _mainThreadActions.Enqueue(action);
+            action();
         }
 
         private Vector2[] RentBuffer(int length)

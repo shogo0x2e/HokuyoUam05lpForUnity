@@ -18,4 +18,10 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="..\..\Assets/Shogo0x2e/HokuyoUam05lpForUnity/Runtime/Projection/ProjectionSurfaceMath.cs" Link="Runtime/ProjectionSurfaceMath.cs" />
+    <Compile Include="..\..\Assets/Shogo0x2e/HokuyoUam05lpForUnity/Runtime/Projection/ProjectionCalibrationTable.cs" Link="Runtime/ProjectionCalibrationTable.cs" />
+    <Compile Include="..\..\Assets/Shogo0x2e/HokuyoUam05lpForUnity/Runtime/UamStreamMode.cs" Link="Runtime/UamStreamMode.cs" />
+  </ItemGroup>
+
 </Project>

@@ -1,5 +1,8 @@
 # 進捗メモ
 
+## 指示
+ユーザとのやり取りは全て日本語で。
+
 ## 現状把握
 - `Assets/Shogo0x2e/HokuyoUam05lpForUnity/Runtime/UamSensor.cs` は通信制御からフレーム解析、極座標→XY変換までを一つに抱えており、`OnPositionDetected` で `Vector2[]` を渡すだけの仕組みになっている。低レベルなスキャンデータ（`IPolarScan`）を扱いたいので、責務分割が必要。
 - `Assets/Shogo0x2e/HokuyoUam05lpForUnity/Runtime/Internal/UamClient.cs` には再接続ロジック・コマンドハンドシェイク・ASCII パースなどが詰まっている。これを元に `TcpTransport`（ソケット制御）と `LidarProtocol`（フレーム→`IPolarScan` 変換）を切り出せる。
@@ -64,6 +67,26 @@
 - Unity 6000.2.6f2 エディタで実機 UAM を接続し、フェーズ1構成で連続スキャン → `UamPointCloudVisualizer` の点群描画が継続することを手動検証。切断→自動再接続も期待通り動作。
 - 気づき: keep-alive が 5 秒間隔のため、ネットワーク遅延が大きい環境では `_frameTimeout` (3 秒) がトリガして AR02 を投げ直す挙動になる。将来は閾値を設定ファイル化するか、プロファイルごとに調整できるようにしたい。
 - ルール追加: 新規インタフェースを導入する際は XML ドキュメントコメントで役割・イベント・プロパティを詳述しておく（今回の `ITransport` / `IPolarScan` で実践）。
+
+## フェーズ2進捗ログ（2025-10-26）
+- `UamSensor` が新しい `OnScan(IPolarScan)` コールバックを公開し、生データを上位層へ伝搬できるようにした。
+- `OnPositionDetected` は `OnScan` ベースで極→XY変換を実施し、ハンドラー未登録時はバッファ割り当てを回避するよう最適化。
+- `DispatchEventsOnUnityThread` オプションを追加し、イベントを Unity メインスレッドへ戻すかバックグラウンドで受け取るかを制御できるようにした（既定はオン）。
+- `dotnet build HokuyoUam05lpForUnity.sln` でコンパイル確認（ビルド成功、約 1.1 秒）。
+
+### Play Mode 検証手順（2025-10-26）
+1. 空のシーンを作成し、`UamSensor` コンポーネントをアタッチ（`AutoStart` を **オフ**、`DispatchEventsOnUnityThread` は検証したい設定に切り替え）。  
+2. 同じ GameObject に `UamSensorMockDriver`（新規）を追加し、`Sensor` フィールドに前項の `UamSensor` を割り当てる。  
+   - Sweep 動作を確認したい場合は `SweepPeriodSeconds` を 2–3 秒程度に設定。固定ビームを見たい場合は 0 以下にし、`StaticBeamIndex` を指定。  
+   - 強度データが必要なら `EmitIntensity` をオンにする。  
+3. イベントの発火状況を可視化するため、`UamSensorEventLogger` を追加（同じ GameObject で可）。`SampleBeamIndex` をハイライト予定のビームに合わせる。  
+4. Play Mode に入り、`UamSensorMockDriver` が想定どおりに `OnScan`/`OnPositionDetected` をトリガしているか Console と Scene ビューで確認。`UamSensorCoordinateLogger` を併用すると XY 点群の分布も把握しやすい。  
+5. `DispatchEventsOnUnityThread` をオフに切り替えて再生し、`UamSensorEventLogger` の `thread=...` 表示で呼び出しスレッドが変化することを確認。必要に応じて `EmitIntervalSeconds` を下げて高頻度動作を確認する。
+
+### フェーズ2の気づき・注意
+- `UamSensorEventLogger` は全フレームを Console に出力するため、`EmitIntervalSeconds` が小さいとログが氾濫する。検証時は `LogOnScan`/`LogOnPositionDetected` を状況に応じて切り替える。  
+- `UamSensorMockDriver` はリフレクションで `UamSensor.HandleFrame` にアクセスしている。シグネチャ変更時は `EnsureHandleBound` でエラーになるので、フェーズ3以降で `UamSensor` を触る場合はモック側の同期更新を忘れない。  
+- `SetClientFactory` はセンサ起動前にのみ呼べる（内部でロック／ガード済み）。Play Mode モック以外でも依存差し替えを行う場合は、`StartSensorAsync` 直前にセットする。
 
 ## 参考ダイアグラム
 
@@ -133,3 +156,11 @@ loop 各スキャン (20–40 Hz)
   Bridge->>Unity: OnDetectedWorld(List<Vector3>)
 end
 ```
+
+## フェーズ3メモ（2025-10-28）
+- `ProjectionSurface` は Unity の再コンパイル完了後でないと `Component > Hokuyo UAM` に表示されない。表示されない場合は Console のエラーを解消してから `Add Component` 検索欄で `ProjectionSurface` を直接検索する。  
+- キャリブレーションウィンドウは Play Mode 中に `UamSensor.OnScan` を購読するため、Play Mode を開始してスキャンが流れている状態で開く（または開き直す）こと。停止中は「まだスキャンデータを受信していません」が出続ける。  
+- `UamSensor` を実機で使う際は `Ip`/`Port` と `AutoStart` を確認し、ログに `[UamSensor] Connected` が出るかチェック。モック検証時は `UamSensorMockDriver.Sensor` に対象センサを割り当てておく。  
+- `最新スキャンを保存` は `ProjectionSurfaceCalibration.SetBaseline` 内でビーム数を検証しているため、ストリームモードとセンサ設定が一致していないと例外になる。保存前にウィンドウ上の `Beam Count` が想定値（標準:1081, 高解像:2161）か確認する。  
+- 保存したアセットは `ProjectionSurface.Calibration` に割り当ててシーンを保存する。複数モードでキャプチャする場合は同一アセットに追記してもよい（モードごとに日付とメモを残すと識別しやすい）。  
+- `UamSensorEventLogger` を併用すると Play Mode 中に `OnScan` がどのくらい呼ばれているか確認できる。スキャンが停止した場合はネットワーク疎通やセンサ側のストリーム設定を再確認する。

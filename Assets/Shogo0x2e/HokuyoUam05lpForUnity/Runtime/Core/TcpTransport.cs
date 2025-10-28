@@ -103,6 +103,7 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Internal
                 await stream.DisposeAsync().ConfigureAwait(false);
 #else
                 stream.Dispose();
+                await Task.CompletedTask;
 #endif
             }
 
