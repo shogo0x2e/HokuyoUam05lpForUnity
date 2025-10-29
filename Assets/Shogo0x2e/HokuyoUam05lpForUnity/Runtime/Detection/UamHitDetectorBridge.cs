@@ -39,6 +39,10 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Detection
         [SerializeField]
         private bool rejectZeroDistance = true;
 
+        [SerializeField]
+        [Min(0f)]
+        private float groupingDistanceMeters = 0.1f;
+
         [Header("Debug Output")]
         [SerializeField]
         private bool logDetections;
@@ -111,6 +115,7 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Detection
         {
             minDistanceMeters = Mathf.Max(0f, minDistanceMeters);
             maxDistanceMeters = Mathf.Max(0f, maxDistanceMeters);
+            groupingDistanceMeters = Mathf.Max(0f, groupingDistanceMeters);
             SyncDetectorSettings();
         }
 
@@ -301,6 +306,7 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Detection
             detector.MinDistanceMeters = minDistanceMeters;
             detector.MaxDistanceMeters = maxDistanceMeters;
             detector.RejectZeroDistance = rejectZeroDistance;
+            detector.GroupingDistanceMeters = groupingDistanceMeters;
         }
 
         private void LogDetections()

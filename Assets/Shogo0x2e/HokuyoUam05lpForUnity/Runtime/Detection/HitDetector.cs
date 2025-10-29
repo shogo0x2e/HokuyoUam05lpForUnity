@@ -31,6 +31,12 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Detection
         public bool RejectZeroDistance { get; set; } = true;
 
         /// <summary>
+        /// クラスタリングに使用する距離しきい値 (メートル)。0 以下の場合は各ビームを個別のヒットとして扱います。
+        /// </summary>
+        [Min(0f)]
+        public float GroupingDistanceMeters { get; set; } = 0.1f;
+
+        /// <summary>
         /// Filters the provided scan and populates <paramref name="results"/> with beams that lie inside the ROI.
         /// </summary>
         /// <remarks>
@@ -62,9 +68,13 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Detection
             float maxDistance = MaxDistanceMeters <= 0f ? float.PositiveInfinity : MaxDistanceMeters;
             bool hasRoi = roiPredicate is not null;
 
-            int bestStep = -1;
-            float bestDistance = float.PositiveInfinity;
-            Vector2 bestPoint = Vector2.zero;
+            float groupingDistance = Mathf.Max(0f, GroupingDistanceMeters);
+            bool groupingEnabled = groupingDistance > 0f;
+            float groupingDistanceSq = groupingDistance * groupingDistance;
+
+            bool hasCluster = false;
+            HitDetection clusterBest = default;
+            Vector2 lastPoint = Vector2.zero;
 
             for (int i = 0; i < count; ++i)
             {
@@ -86,17 +96,42 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Detection
                     continue;
                 }
 
-                if (distanceMeters < bestDistance)
+                var detection = new HitDetection(i, distanceMeters, sensorPoint);
+
+                if (!groupingEnabled)
                 {
-                    bestDistance = distanceMeters;
-                    bestStep = i;
-                    bestPoint = sensorPoint;
+                    results.Add(detection);
+                    continue;
                 }
+
+                if (!hasCluster)
+                {
+                    clusterBest = detection;
+                    lastPoint = sensorPoint;
+                    hasCluster = true;
+                    continue;
+                }
+
+                float separationSq = Vector2.SqrMagnitude(sensorPoint - lastPoint);
+                if (separationSq > groupingDistanceSq)
+                {
+                    results.Add(clusterBest);
+                    clusterBest = detection;
+                }
+                else if (distanceMeters < clusterBest.DistanceMeters)
+                {
+                    clusterBest = detection;
+                }
+
+                lastPoint = sensorPoint;
             }
 
-            if (bestStep >= 0)
+            if (groupingEnabled)
             {
-                results.Add(new HitDetection(bestStep, bestDistance, bestPoint));
+                if (hasCluster)
+                {
+                    results.Add(clusterBest);
+                }
             }
         }
     }

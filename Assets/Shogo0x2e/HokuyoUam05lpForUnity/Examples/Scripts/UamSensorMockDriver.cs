@@ -44,6 +44,13 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Examples
         [Min(0f)]
         public float HighlightJitterMeters = 0.01f;
 
+        [Header("Cluster Grouping")]
+        [Tooltip("追加のハイライトクラスター定義。Enabled が true のものだけが適用されます。")]
+        public HighlightCluster[] AdditionalClusters = new[]
+        {
+            new HighlightCluster { Enabled = false, BeamOffset = 180, TargetDistanceMeters = 0.9f, TargetBeamWidth = 6 }
+        };
+
         [Header("Intensity (Optional)")]
         public bool EmitIntensity;
         [Tooltip("基準強度値。")]
@@ -59,6 +66,28 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Examples
         private uint _timestamp;
         private bool _runInBackgroundWasSet;
         private bool _previousRunInBackground;
+
+        [Serializable]
+        public sealed class HighlightCluster
+        {
+            [Tooltip("ベースのハイライトインデックスからの相対ビームオフセット。")]
+            public int BeamOffset;
+
+            [Tooltip("このクラスターの中心距離 (メートル)。0 以下の場合は TargetDistanceMeters を継承します。")]
+            public float TargetDistanceMeters = 0f;
+
+            [Tooltip("このクラスターのビーム幅。0 以下の場合は TargetBeamWidth を継承します。")]
+            public int TargetBeamWidth = 0;
+
+            [Tooltip("クラスター固有の距離オフセット。未設定または要素数 0 の場合は HighlightOffsetsMeters を共有します。")]
+            public float[] HighlightOffsetsMeters = Array.Empty<float>();
+
+            [Tooltip("クラスター固有の揺らぎ量。負の値の場合は HighlightJitterMeters を共有します。")]
+            public float HighlightJitterMeters = -1f;
+
+            [Tooltip("false の場合はこのクラスターを無視します。")]
+            public bool Enabled = true;
+        }
 
         private void Awake()
         {
@@ -149,10 +178,9 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Examples
             }
 
             int highlightIndex = ResolveHighlightIndex(beamCount);
-            int halfWidth = Mathf.Clamp(TargetBeamWidth, 1, beamCount) / 2;
+            int clusterWidth = Mathf.Clamp(TargetBeamWidth, 1, beamCount);
 
             ushort baseline = (ushort)Mathf.Clamp(Mathf.RoundToInt(BaselineDistanceMeters * 1000f), 1, 65534);
-            ushort target = (ushort)Mathf.Clamp(Mathf.RoundToInt(TargetDistanceMeters * 1000f), 1, 65534);
 
             var distances = new ushort[beamCount];
             var intensities = EmitIntensity ? new ushort[beamCount] : null;
@@ -166,31 +194,29 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Examples
                 }
             }
 
-            for (int offset = -halfWidth; offset <= halfWidth; ++offset)
+            ApplyCluster(distances, intensities, beamCount, highlightIndex, TargetDistanceMeters,
+                clusterWidth, HighlightOffsetsMeters, HighlightJitterMeters);
+
+            var additionalClusters = AdditionalClusters;
+            if (additionalClusters != null)
             {
-                int index = (highlightIndex + offset + beamCount) % beamCount;
-
-                float distanceMeters = TargetDistanceMeters;
-                if (HighlightOffsetsMeters != null && HighlightOffsetsMeters.Length > 0)
+                for (int i = 0; i < additionalClusters.Length; ++i)
                 {
-                    int patternIndex = (offset + halfWidth) % HighlightOffsetsMeters.Length;
-                    distanceMeters += HighlightOffsetsMeters[patternIndex];
-                }
+                    var cluster = additionalClusters[i];
+                    if (!cluster.Enabled)
+                    {
+                        continue;
+                    }
 
-                if (HighlightJitterMeters > 0f)
-                {
-                    float jitter = UnityEngine.Random.Range(-HighlightJitterMeters, HighlightJitterMeters);
-                    distanceMeters += jitter;
-                }
+                    float clusterDistance = cluster.TargetDistanceMeters > 0f ? cluster.TargetDistanceMeters : TargetDistanceMeters;
+                    int clusterBeamWidth = cluster.TargetBeamWidth > 0 ? cluster.TargetBeamWidth : clusterWidth;
+                    float[] offsets = (cluster.HighlightOffsetsMeters != null && cluster.HighlightOffsetsMeters.Length > 0)
+                        ? cluster.HighlightOffsetsMeters
+                        : HighlightOffsetsMeters;
+                    float jitter = cluster.HighlightJitterMeters >= 0f ? cluster.HighlightJitterMeters : HighlightJitterMeters;
 
-                distanceMeters = Mathf.Clamp(distanceMeters, 0.05f, BaselineDistanceMeters);
-
-                ushort customDistance = (ushort)Mathf.Clamp(Mathf.RoundToInt(distanceMeters * 1000f), 1, 65534);
-                distances[index] = customDistance;
-
-                if (intensities is not null)
-                {
-                    intensities[index] = TargetIntensity;
+                    int center = (highlightIndex + cluster.BeamOffset + beamCount) % beamCount;
+                    ApplyCluster(distances, intensities, beamCount, center, clusterDistance, clusterBeamWidth, offsets, jitter);
                 }
             }
 
@@ -217,6 +243,43 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Examples
             };
 
             _handleFrame.Invoke(frame);
+        }
+
+        private void ApplyCluster(ushort[] distances, ushort[]? intensities, int beamCount, int centerIndex,
+            float baseDistanceMeters, int beamWidth, float[] offsets, float jitterMeters)
+        {
+            int effectiveWidth = Mathf.Clamp(beamWidth, 1, beamCount);
+            int halfWidth = effectiveWidth / 2;
+            float[] pattern = offsets != null && offsets.Length > 0 ? offsets : Array.Empty<float>();
+            int patternLength = pattern.Length;
+
+            for (int offset = -halfWidth; offset <= halfWidth; ++offset)
+            {
+                int index = (centerIndex + offset + beamCount) % beamCount;
+
+                float distanceMeters = baseDistanceMeters;
+                if (patternLength > 0)
+                {
+                    int patternIndex = (offset + halfWidth) % patternLength;
+                    distanceMeters += pattern[patternIndex];
+                }
+
+                if (jitterMeters > 0f)
+                {
+                    float jitter = UnityEngine.Random.Range(-jitterMeters, jitterMeters);
+                    distanceMeters += jitter;
+                }
+
+                distanceMeters = Mathf.Clamp(distanceMeters, 0.05f, BaselineDistanceMeters);
+
+                ushort customDistance = (ushort)Mathf.Clamp(Mathf.RoundToInt(distanceMeters * 1000f), 1, 65534);
+                distances[index] = customDistance;
+
+                if (intensities is not null)
+                {
+                    intensities[index] = TargetIntensity;
+                }
+            }
         }
 
         private bool EnsureHandleBound()

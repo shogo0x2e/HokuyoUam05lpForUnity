@@ -171,7 +171,7 @@ end
 - `UamSensorEventLogger` を併用すると Play Mode 中に `OnScan` がどのくらい呼ばれているか確認できる。スキャンが停止した場合はネットワーク疎通やセンサ側のストリーム設定を再確認する。
 
 ## フェーズ4メモ（2025-10-29）
-- `Runtime/Detection/HitDetector` は ROI（`ProjectionSurface` の平面）と距離レンジでビームをフィルタリングし、該当するステップ番号とセンサ座標を `HitDetection` として列挙するだけのシンプルな実装に変更。しきい値やクラスタリングは未実装とし、まずはステップ列の可視化に集中する。  
+- `Runtime/Detection/HitDetector` の初期実装は ROI（`ProjectionSurface` の平面）と距離レンジでビームをフィルタリングし、該当するステップ番号とセンサ座標を `HitDetection` として列挙するだけのシンプルな状態。しきい値やクラスタリングは未実装とし、まずはステップ列の可視化に集中する。  
 - `HitDetection` / `HitObservation` でセンサ平面→ワールド変換の結果を保持。`HitObservation.SensorPoint3` は `PointCloudVisualizer` 等の Gizmo 補助用。  
 - `Runtime/Detection/UamHitDetectorBridge` が `UamSensor.OnScan` を購読し、ROI 関数を都度生成してヒット一覧を更新。`OnDetections` (UnityEvent) で `List<HitObservation>` を通知しつつ、最新結果は `CopyLatestObservations` からスナップショット取得できる。`logDetections` をオンにするとヒット数とステップ番号を Console へ出力。  
 - ブリッジはセンサ Transform が未割り当ての場合もステップ一覧を確保できるようにし、ワールド座標はゼロベクトルで埋める。
@@ -184,5 +184,6 @@ end
 - `UamHitDetectorBridge.logDetections` を有効にすると、ROI 内で検出されたビームのステップ番号とワールド座標が Console に出力されるよう改善。`HitPrefabVisualizer` はヒット地点へマーカーを設置し、検出後も約 5 秒間残すようライフタイム制御を追加した。
 - `ProjectionSurface.MakeSensorLocalRoiPredicate` の行列変換が System.Numerics 向けに正しい転置・平行移動を行うよう修正し、センサローカル→表面ローカル判定でのズレを解消。シーン側も `Projection Surface` をセンサ子のまま `localPosition (0,0,1.2)` / `localRotation (0,0,0)` に統一し、正面 (＋Z) ビームが ROI 中心を通過する構成を確定した。
 - Unity MCP から Play Mode を駆動して Mock Driver のスイープを確認。Console で `[UamHitDetectorBridge] Hits=9, Steps=[512…520]` ログと Prefab マーカー生成を確認でき、ROI 内ビームが期待のステップ範囲で検出されることを実機レスで再現できた。検証前後で `dotnet build HokuyoUam05lpForUnity.sln` も通過。
-- HitDetector の ROI ヒットは最短距離ビーム 1 本だけに絞るよう変更し、`HitPrefabVisualizer` へのコールバックで常にボール接触推定点が取れるようにした。
+- HitDetector は短距離ビームのクラスタリング（デフォルト 10cm 閾値）を行い、クラスターごとに最短ビームを返すよう拡張。`GroupingDistanceMeters` でグループ判定を調整できる。
 - `UamSensorMockDriver` にハイライトオフセット配列（長・短・長のばらつきを再現）とランダム揺らぎを導入。ROI 内に複数距離が混在するようになり、最短ビームを継続的にテストしやすくした。Play Mode 開始時に `Application.runInBackground = true` を強制し、停止時に元へ戻す処理も組み込み済み。
+- `UamSensorMockDriver` に複数クラスター設定 (`AdditionalClusters`) を追加。Sweep の基準ビームから相対オフセットと距離を指定して複数の短距離パターンを同時生成できる。
