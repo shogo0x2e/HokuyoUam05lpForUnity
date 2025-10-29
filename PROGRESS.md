@@ -1,7 +1,12 @@
 # 進捗メモ
 
 ## 指示
-ユーザとのやり取りは全て日本語で。
+ユーザとのやり取りは全て日本語で行うこと。
+作業を進める前に Unity MCP が利用可能であることを確認 し、利用できない場合は「Unity MCP を使えません」とユーザに伝えて 作業を中断 すること。
+
+また、Unity MCP を積極的に活用し、可能な限り「残りは Play Mode で試すだけ」となるように作業を進めること。
+つまり、実装・設定・依存関係の構築などは MCP 上で完結させ、Play Mode の実行による Console のログチェック、作業指示者が Unity Editor 上で行うべき作業は最小限（Play Mode による成果物チェックのみ）となるよう最大限努力すること。
+
 
 ## 現状把握
 - `Assets/Shogo0x2e/HokuyoUam05lpForUnity/Runtime/UamSensor.cs` は通信制御からフレーム解析、極座標→XY変換までを一つに抱えており、`OnPositionDetected` で `Vector2[]` を渡すだけの仕組みになっている。低レベルなスキャンデータ（`IPolarScan`）を扱いたいので、責務分割が必要。
@@ -164,3 +169,16 @@ end
 - `最新スキャンを保存` は `ProjectionSurfaceCalibration.SetBaseline` 内でビーム数を検証しているため、ストリームモードとセンサ設定が一致していないと例外になる。保存前にウィンドウ上の `Beam Count` が想定値（標準:1081, 高解像:2161）か確認する。  
 - 保存したアセットは `ProjectionSurface.Calibration` に割り当ててシーンを保存する。複数モードでキャプチャする場合は同一アセットに追記してもよい（モードごとに日付とメモを残すと識別しやすい）。  
 - `UamSensorEventLogger` を併用すると Play Mode 中に `OnScan` がどのくらい呼ばれているか確認できる。スキャンが停止した場合はネットワーク疎通やセンサ側のストリーム設定を再確認する。
+
+## フェーズ4メモ（2025-10-29）
+- `Runtime/Detection/HitDetector` は ROI（`ProjectionSurface` の平面）と距離レンジでビームをフィルタリングし、該当するステップ番号とセンサ座標を `HitDetection` として列挙するだけのシンプルな実装に変更。しきい値やクラスタリングは未実装とし、まずはステップ列の可視化に集中する。  
+- `HitDetection` / `HitObservation` でセンサ平面→ワールド変換の結果を保持。`HitObservation.SensorPoint3` は `PointCloudVisualizer` 等の Gizmo 補助用。  
+- `Runtime/Detection/UamHitDetectorBridge` が `UamSensor.OnScan` を購読し、ROI 関数を都度生成してヒット一覧を更新。`OnDetections` (UnityEvent) で `List<HitObservation>` を通知しつつ、最新結果は `CopyLatestObservations` からスナップショット取得できる。`logDetections` をオンにするとヒット数とステップ番号を Console へ出力。  
+- ブリッジはセンサ Transform が未割り当ての場合もステップ一覧を確保できるようにし、ワールド座標はゼロベクトルで埋める。
+
+## フェーズ5メモ（2025-10-29）
+- `Examples/Scripts/HitPrefabVisualizer` を追加。`UamHitDetectorBridge` の `OnDetections` へ接続し、ヒット位置にプレハブ（未指定時は球 Primitive）をプールして表示。ステップ番号は Hierarchy 名へ反映される。  
+- `PointCloudVisualizer` と併用すると、ROI 内に入ったビームのステップ番号をシーン上で即座に確認できる。Prefab の差し替えで Billboard や TextMesh 等の表現に切り替え可能。  
+- ブリッジの Gizmo 描画と Prefab 可視化を組み合わせることで、Kåsa 等のフィッティング処理を導入する前にセンサ→ROI の通過ステップ列を手早く検証できる。  
+- Play Mode 用の `HitDetectorMock.unity` シーンを追加。`UamSensor` + `UamSensorMockDriver` + `ProjectionSurface`（センサ子オブジェクト, Z=1.2m）+ `UamHitDetectorBridge` + `HitPrefabVisualizer` + `UamPointCloudVisualizer` がセットアップ済みで、再生すると ROI 内ヒットが球マーカーと Gizmo で表示される。`ProjectionSurface` はセンサ平面 (XZ) と平行に扱う仕様へ調整済み。
+- `UamHitDetectorBridge.logDetections` を有効にすると、ROI 内で検出されたビームのステップ番号とワールド座標が Console に出力されるよう改善。`HitPrefabVisualizer` はヒット地点へマーカーを設置し、検出後も約 5 秒間残すようライフタイム制御を追加した。

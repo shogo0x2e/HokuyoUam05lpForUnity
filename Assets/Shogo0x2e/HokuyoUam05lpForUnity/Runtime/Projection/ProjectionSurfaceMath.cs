@@ -6,7 +6,7 @@ using System.Numerics;
 namespace Shogo0x2e.HokuyoUam05lpForUnity.Projection
 {
     /// <summary>
-    /// Axis-aligned half extents expressed in the projection surface's local coordinate space.
+    /// Axis-aligned half extents expressed in the projection surface's local coordinate space (X = lateral, Z = forward, Y = normal).
     /// </summary>
     public readonly struct ProjectionSurfaceDescriptor
     {
@@ -61,9 +61,9 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Projection
             var sensorLocalPoint = new Vector3(sensorPoint.X, 0f, sensorPoint.Y);
             var surfaceLocalPoint = Vector3.Transform(sensorLocalPoint, sensorToSurface);
 
-            return MathF.Abs(surfaceLocalPoint.X) <= descriptor.HalfWidth
-                && MathF.Abs(surfaceLocalPoint.Y) <= descriptor.HalfHeight
-                && MathF.Abs(surfaceLocalPoint.Z) <= descriptor.HalfDepth;
+            return MathF.Abs(surfaceLocalPoint.X) <= descriptor.HalfWidth     // lateral (sensor X)
+                && MathF.Abs(surfaceLocalPoint.Z) <= descriptor.HalfHeight    // forward (sensor Y)
+                && MathF.Abs(surfaceLocalPoint.Y) <= descriptor.HalfDepth;    // normal (sensor up)
         }
     }
 }

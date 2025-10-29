@@ -27,9 +27,9 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
             for (int i = 0; i < pointCount; ++i)
             {
                 float angle = startRad + stepRad * i;
-                float x = Mathf.Cos(angle);
-                float y = Mathf.Sin(angle);
-                result[i] = new Vector2(x, y);
+                float lateral = Mathf.Sin(angle);
+                float forward = Mathf.Cos(angle);
+                result[i] = new Vector2(lateral, forward);
             }
 
             return result;
