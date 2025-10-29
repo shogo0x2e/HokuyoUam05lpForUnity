@@ -182,3 +182,7 @@ end
 - ブリッジの Gizmo 描画と Prefab 可視化を組み合わせることで、Kåsa 等のフィッティング処理を導入する前にセンサ→ROI の通過ステップ列を手早く検証できる。  
 - Play Mode 用の `HitDetectorMock.unity` シーンを追加。`UamSensor` + `UamSensorMockDriver` + `ProjectionSurface`（センサ子オブジェクト, Z=1.2m）+ `UamHitDetectorBridge` + `HitPrefabVisualizer` + `UamPointCloudVisualizer` がセットアップ済みで、再生すると ROI 内ヒットが球マーカーと Gizmo で表示される。`ProjectionSurface` はセンサ平面 (XZ) と平行に扱う仕様へ調整済み。
 - `UamHitDetectorBridge.logDetections` を有効にすると、ROI 内で検出されたビームのステップ番号とワールド座標が Console に出力されるよう改善。`HitPrefabVisualizer` はヒット地点へマーカーを設置し、検出後も約 5 秒間残すようライフタイム制御を追加した。
+- `ProjectionSurface.MakeSensorLocalRoiPredicate` の行列変換が System.Numerics 向けに正しい転置・平行移動を行うよう修正し、センサローカル→表面ローカル判定でのズレを解消。シーン側も `Projection Surface` をセンサ子のまま `localPosition (0,0,1.2)` / `localRotation (0,0,0)` に統一し、正面 (＋Z) ビームが ROI 中心を通過する構成を確定した。
+- Unity MCP から Play Mode を駆動して Mock Driver のスイープを確認。Console で `[UamHitDetectorBridge] Hits=9, Steps=[512…520]` ログと Prefab マーカー生成を確認でき、ROI 内ビームが期待のステップ範囲で検出されることを実機レスで再現できた。検証前後で `dotnet build HokuyoUam05lpForUnity.sln` も通過。
+- HitDetector の ROI ヒットは最短距離ビーム 1 本だけに絞るよう変更し、`HitPrefabVisualizer` へのコールバックで常にボール接触推定点が取れるようにした。
+- `UamSensorMockDriver` にハイライトオフセット配列（長・短・長のばらつきを再現）とランダム揺らぎを導入。ROI 内に複数距離が混在するようになり、最短ビームを継続的にテストしやすくした。Play Mode 開始時に `Application.runInBackground = true` を強制し、停止時に元へ戻す処理も組み込み済み。

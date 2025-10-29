@@ -36,6 +36,14 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Examples
         [Tooltip("Sweep 無効時にハイライトするビーム番号。")]
         public int StaticBeamIndex = 540;
 
+        [Header("Pattern")]
+        [Tooltip("ハイライトされたビームに加算する距離オフセット (メートル)。配列は必要に応じて循環使用します。短い値を混ぜると ROI 内で最短ビームが選ばれやすくなります。")]
+        public float[] HighlightOffsetsMeters = new float[] { 0.06f, 0.02f, -0.04f, 0.03f, -0.06f };
+
+        [Tooltip("各ハイライトビームへ加えるランダム揺らぎ (メートル)。0 で揺らぎなし。")]
+        [Min(0f)]
+        public float HighlightJitterMeters = 0.01f;
+
         [Header("Intensity (Optional)")]
         public bool EmitIntensity;
         [Tooltip("基準強度値。")]
@@ -49,6 +57,8 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Examples
         private Action<UamFrame>? _handleFrame;
         private Coroutine? _loop;
         private uint _timestamp;
+        private bool _runInBackgroundWasSet;
+        private bool _previousRunInBackground;
 
         private void Awake()
         {
@@ -57,6 +67,13 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Examples
 
         private void OnEnable()
         {
+            if (!Application.runInBackground)
+            {
+                _previousRunInBackground = Application.runInBackground;
+                Application.runInBackground = true;
+                _runInBackgroundWasSet = true;
+            }
+
             if (AutoStart)
             {
                 StartMock();
@@ -66,6 +83,12 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Examples
         private void OnDisable()
         {
             StopMock();
+
+            if (_runInBackgroundWasSet)
+            {
+                Application.runInBackground = _previousRunInBackground;
+                _runInBackgroundWasSet = false;
+            }
         }
 
         public void StartMock()
@@ -146,7 +169,25 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Examples
             for (int offset = -halfWidth; offset <= halfWidth; ++offset)
             {
                 int index = (highlightIndex + offset + beamCount) % beamCount;
-                distances[index] = target;
+
+                float distanceMeters = TargetDistanceMeters;
+                if (HighlightOffsetsMeters != null && HighlightOffsetsMeters.Length > 0)
+                {
+                    int patternIndex = (offset + halfWidth) % HighlightOffsetsMeters.Length;
+                    distanceMeters += HighlightOffsetsMeters[patternIndex];
+                }
+
+                if (HighlightJitterMeters > 0f)
+                {
+                    float jitter = UnityEngine.Random.Range(-HighlightJitterMeters, HighlightJitterMeters);
+                    distanceMeters += jitter;
+                }
+
+                distanceMeters = Mathf.Clamp(distanceMeters, 0.05f, BaselineDistanceMeters);
+
+                ushort customDistance = (ushort)Mathf.Clamp(Mathf.RoundToInt(distanceMeters * 1000f), 1, 65534);
+                distances[index] = customDistance;
+
                 if (intensities is not null)
                 {
                     intensities[index] = TargetIntensity;

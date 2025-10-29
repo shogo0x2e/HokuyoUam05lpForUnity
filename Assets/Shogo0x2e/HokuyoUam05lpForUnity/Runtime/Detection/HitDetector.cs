@@ -62,6 +62,10 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Detection
             float maxDistance = MaxDistanceMeters <= 0f ? float.PositiveInfinity : MaxDistanceMeters;
             bool hasRoi = roiPredicate is not null;
 
+            int bestStep = -1;
+            float bestDistance = float.PositiveInfinity;
+            Vector2 bestPoint = Vector2.zero;
+
             for (int i = 0; i < count; ++i)
             {
                 ushort distanceMillimetres = distances[i];
@@ -82,7 +86,17 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Detection
                     continue;
                 }
 
-                results.Add(new HitDetection(i, distanceMeters, sensorPoint));
+                if (distanceMeters < bestDistance)
+                {
+                    bestDistance = distanceMeters;
+                    bestStep = i;
+                    bestPoint = sensorPoint;
+                }
+            }
+
+            if (bestStep >= 0)
+            {
+                results.Add(new HitDetection(bestStep, bestDistance, bestPoint));
             }
         }
     }
