@@ -18,16 +18,6 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Internal
     internal interface ITransport : IAsyncDisposable
     {
         /// <summary>
-        /// Fired once a connection has been established and read/write calls are safe to use.
-        /// </summary>
-        event Action? Connected;
-
-        /// <summary>
-        /// Fired when the underlying connection has been torn down (either locally or remotely).
-        /// </summary>
-        event Action? Disconnected;
-
-        /// <summary>
         /// Indicates whether a connection is currently active.
         /// </summary>
         bool IsConnected { get; }
@@ -41,7 +31,7 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Internal
         Task ConnectAsync(string host, int port, CancellationToken cancellationToken);
 
         /// <summary>
-        /// Closes the active connection and fires <see cref="Disconnected"/>.
+        /// Closes the active connection.
         /// </summary>
         Task DisconnectAsync(CancellationToken cancellationToken);
 

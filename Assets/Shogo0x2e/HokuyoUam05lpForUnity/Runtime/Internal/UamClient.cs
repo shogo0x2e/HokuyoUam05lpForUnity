@@ -36,11 +36,6 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Internal
 
         private UamStreamMode _desiredMode = UamStreamMode.Standard;
 
-        public event Action<UamFrame>? FrameReceived;
-        public event Action? Connected;
-        public event Action? Disconnected;
-        public event Action<Exception>? Error;
-
         public bool IsRunning => _runLoopTask is { IsCompleted: false };
         public bool IsConnected => _transport.IsConnected;
 
@@ -379,33 +374,21 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Internal
 
         private void InvokeFrameCallbacks(UamFrame frame)
         {
-            var frameHandler = FrameReceived;
-            frameHandler?.Invoke(frame);
-
             _onFrame?.Invoke(frame);
         }
 
         private void InvokeError(Exception exception)
         {
-            var handler = Error;
-            handler?.Invoke(exception);
-
             _onError?.Invoke(exception);
         }
 
         private void InvokeConnected()
         {
-            var handler = Connected;
-            handler?.Invoke();
-
             _onConnected?.Invoke();
         }
 
         private void InvokeDisconnected()
         {
-            var handler = Disconnected;
-            handler?.Invoke();
-
             _onDisconnected?.Invoke();
         }
 

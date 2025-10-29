@@ -36,7 +36,6 @@ dotnet build HokuyoUam05lpForUnity.sln
 1. シーン内の `UamSensor` を選択し、IP アドレスとポートをセンサの設定値に合わせる。
 2. `AutoStart` をオンにするとシーン開始時に自動接続します。任意で UI ボタン等から `StartSensor()` を呼ぶことも可能です。
 3. `Dispatch Events On Unity Thread` をオンにしておくと、検出結果を安全に Unity API へ渡せます。
-4. ROI 判定を行う `ProjectionSurface` にキャリブレーション済みの `ProjectionCalibrationTable` を設定し、実環境に合わせた平面サイズ・許容誤差を指定します。
 
 ## ヒット検出ワークフロー
 1. `UamSensor` がスキャン (`IPolarScan`) を発行。

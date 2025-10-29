@@ -166,7 +166,6 @@ end
 - `ProjectionSurface` は Unity の再コンパイル完了後でないと `Component > Hokuyo UAM` に表示されない。表示されない場合は Console のエラーを解消してから `Add Component` 検索欄で `ProjectionSurface` を直接検索する。  
 - キャリブレーションウィンドウは Play Mode 中に `UamSensor.OnScan` を購読するため、Play Mode を開始してスキャンが流れている状態で開く（または開き直す）こと。停止中は「まだスキャンデータを受信していません」が出続ける。  
 - `UamSensor` を実機で使う際は `Ip`/`Port` と `AutoStart` を確認し、ログに `[UamSensor] Connected` が出るかチェック。モック検証時は `UamSensorMockDriver.Sensor` に対象センサを割り当てておく。  
-- `最新スキャンを保存` は `ProjectionSurfaceCalibration.SetBaseline` 内でビーム数を検証しているため、ストリームモードとセンサ設定が一致していないと例外になる。保存前にウィンドウ上の `Beam Count` が想定値（標準:1081, 高解像:2161）か確認する。  
 - 保存したアセットは `ProjectionSurface.Calibration` に割り当ててシーンを保存する。複数モードでキャプチャする場合は同一アセットに追記してもよい（モードごとに日付とメモを残すと識別しやすい）。  
 - `UamSensorEventLogger` を併用すると Play Mode 中に `OnScan` がどのくらい呼ばれているか確認できる。スキャンが停止した場合はネットワーク疎通やセンサ側のストリーム設定を再確認する。
 

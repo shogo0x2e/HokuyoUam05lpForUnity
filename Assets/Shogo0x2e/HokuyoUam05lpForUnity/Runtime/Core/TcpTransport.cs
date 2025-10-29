@@ -27,9 +27,6 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Internal
             _writeTimeout = writeTimeout ?? TimeSpan.FromSeconds(2);
         }
 
-        public event Action? Connected;
-        public event Action? Disconnected;
-
         public bool IsConnected
         {
             get
@@ -80,8 +77,6 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Internal
                 _client = client;
                 _stream = stream;
             }
-
-            Connected?.Invoke();
         }
 
         public async Task DisconnectAsync(CancellationToken cancellationToken)
@@ -109,10 +104,7 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity.Internal
 
             client?.Close();
 
-            if (stream is not null || client is not null)
-            {
-                Disconnected?.Invoke();
-            }
+            // no further notification required; caller observes connection state via IsConnected
         }
 
         public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)

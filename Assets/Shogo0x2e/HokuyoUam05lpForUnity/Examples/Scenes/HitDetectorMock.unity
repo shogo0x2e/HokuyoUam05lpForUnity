@@ -164,7 +164,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 182115581}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 41e261c842b8d46819d55e69c5fe1fa3, type: 3}
   m_Name: 
@@ -187,7 +187,7 @@ MonoBehaviour:
   HighlightJitterMeters: 0.01
   AdditionalClusters:
   - BeamOffset: 28
-    TargetDistanceMeters: 2
+    TargetDistanceMeters: 0.2
     TargetBeamWidth: 6
     HighlightOffsetsMeters: []
     HighlightJitterMeters: -1
@@ -211,7 +211,7 @@ MonoBehaviour:
   Ip: 192.168.0.10
   Port: 10940
   AutoReconnect: 1
-  AutoStart: 0
+  AutoStart: 1
   AutoStartMode: 0
   VerboseLogging: 0
   DispatchEventsOnUnityThread: 1
@@ -269,7 +269,7 @@ MonoBehaviour:
   minDistanceMeters: 0.05
   maxDistanceMeters: 0
   rejectZeroDistance: 1
-  groupingDistanceMeters: 0.05
+  groupingDistanceMeters: 0.15
   logDetections: 1
   drawGizmos: 1
   gizmoColor: {r: 1, g: 0.25, b: 0.35, a: 0.5}
@@ -710,7 +710,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: -876546973899608171, guid: 593e59e0ed7d240e9a6956540a02d3d9, type: 3}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

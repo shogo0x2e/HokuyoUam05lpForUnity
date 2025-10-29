@@ -33,10 +33,6 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
         [SerializeField]
         private float depthTolerance = 0.04f;
 
-        [Header("Calibration")]
-        [SerializeField]
-        private ProjectionSurfaceCalibration? calibration;
-
         [Header("Debug")]
         [SerializeField]
         private bool drawGizmos = true;
@@ -47,8 +43,6 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
         public float Width => Mathf.Max(width, 0f);
         public float ForwardLength => Mathf.Max(forwardLength, 0f);
         public float DepthTolerance => Mathf.Max(depthTolerance, 0f);
-        public ProjectionSurfaceCalibration? Calibration => calibration;
-
         [Obsolete("Use ForwardLength instead.")]
         public float Height => ForwardLength;
 
@@ -75,27 +69,6 @@ namespace Shogo0x2e.HokuyoUam05lpForUnity
                 var numericsPoint = new NumericsVector2(sensorPoint.x, sensorPoint.y);
                 return ProjectionSurfaceMath.Contains(descriptor, numericsMatrix, numericsPoint);
             };
-        }
-
-        /// <summary>
-        /// Proxies baseline retrieval to the assigned calibration asset.
-        /// </summary>
-        public bool TryGetBaseline(UamStreamMode streamMode, out ReadOnlyMemory<int> distances, out DateTime capturedAtUtc, out string note)
-        {
-            if (calibration is not null)
-            {
-                return calibration.TryGetBaseline(streamMode, out distances, out capturedAtUtc, out note);
-            }
-
-            distances = ReadOnlyMemory<int>.Empty;
-            capturedAtUtc = DateTime.MinValue;
-            note = string.Empty;
-            return false;
-        }
-
-        public int[] GetBaselineCopy(UamStreamMode streamMode)
-        {
-            return calibration?.GetBaselineCopy(streamMode) ?? Array.Empty<int>();
         }
 
         private static NumericsMatrix4x4 ToNumericsMatrix(UnityEngine.Matrix4x4 matrix)
